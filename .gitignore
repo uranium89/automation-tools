@@ -1,21 +1,22 @@
-# Environment and configuration
+```
+# Environment
 .env
 .env.local
 *.env.*
 
-# Logs and temporary files
+# Logs and temp files
 *.log
 *.tmp
 *.swp
 
-# Editors and IDEs
+# Editors
 .vscode/
 .idea/
 
 # Dependencies
 node_modules/
-.venv/
 venv/
+.venv/
 __pycache__/
 .mypy_cache/
 .pytest_cache/
@@ -24,14 +25,9 @@ build/
 target/
 .gradle/
 
-# System files
+# OS generated files
 .DS_Store
 Thumbs.db
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
 
 # Compiled files
 *.pyc
@@ -43,6 +39,11 @@ htmlcov/
 *.a
 *.obj
 *.out
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
 # Compressed files
 *.zip
@@ -67,3 +68,4 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+```
