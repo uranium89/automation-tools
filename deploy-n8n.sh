@@ -131,6 +131,8 @@ mkdir -p "$DEPLOY_DIR"/{nginx/conf.d,certbot/www,certbot/conf,workflows}
 print_info "Copying configuration files..."
 cp "$SCRIPT_DIR/docker-compose.yml" "$DEPLOY_DIR/"
 cp "$SCRIPT_DIR/nginx/nginx.conf" "$DEPLOY_DIR/nginx/"
+rm -f "$DEPLOY_DIR/nginx/conf.d/n8n.conf"
+rm -f "$DEPLOY_DIR/nginx/conf.d/n8n-temp.conf"
 
 # Generate nginx config from template (save as .full until SSL is ready)
 print_info "Generating Nginx configuration..."
