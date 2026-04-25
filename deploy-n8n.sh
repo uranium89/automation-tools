@@ -171,17 +171,18 @@ print_info "Starting initial containers..."
 cd "$DEPLOY_DIR"
 
 # Create a temporary nginx config for HTTP only (for certificate generation)
-cat > "$DEPLOY_DIR/nginx/conf.d/n8n-temp.conf" << EOF
+cat > "$DEPLOY_DIR/nginx/conf.d/n8n-temp.conf" << 'EOF'
 server {
-    listen 80;
-    server_name $HOSTNAME;
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
 
     location / {
-        return 301 https://\$host\$request_uri;
+        return 301 https://$host$request_uri;
     }
 }
 EOF
