@@ -1,252 +1,221 @@
 # n8n Deployment on Azure Ubuntu VM
 
-This repository contains deployment scripts and workflow templates for running n8n on Azure Ubuntu VM with Docker.
+Complete deployment solution for n8n with Docker, Nginx reverse proxy, and Let's Encrypt SSL certificate support.
 
 ## Features
 
-- ✅ Docker & Docker Compose installation
-- ✅ n8n deployment on port 80
-- ✅ Azure DNS integration
-- ✅ GitHub workflow synchronization
-- ✅ Automatic workflow sync via cron
-- ✅ Persistent data storage
-- ✅ Systemd service for auto-start
+- ✅ **Docker & Docker Compose** - Containerized deployment
+- ✅ **Nginx Reverse Proxy** - Professional reverse proxy with WebSocket support
+- ✅ **Let's Encrypt HTTPS** - Automatic SSL certificate on port 443
+- ✅ **Azure DNS Compatible** - Works with `*.cloudapp.azure.com` or custom domains
+- ✅ **GitHub Workflow Sync** - Store workflows in GitHub for Qwen Coder access
+- ✅ **Auto-renewal** - Automatic SSL certificate renewal
+- ✅ **Persistent Storage** - Data stored in `/opt/n8n/`
+
+## Prerequisites
+
+1. Fresh Ubuntu Server (20.04 or 22.04)
+2. Public IP address for your VM
+3. DNS record pointing to your VM:
+   - For Azure default domain: `n8n.<region>.cloudapp.azure.com` (already configured by Azure)
+   - For custom domain: Create A record pointing to VM IP
+4. Email address for Let's Encrypt certificate
 
 ## Quick Start
 
-### Prerequisites
-
-- Azure Ubuntu VM (20.04 or later)
-- SSH access to the VM
-- Azure CLI installed locally (for DNS configuration)
-- GitHub repository for storing workflows
-
-### Deployment Steps
-
-1. **Clone this repository to your Azure VM:**
+### 1. Clone this repository to your Ubuntu VM
 
 ```bash
-git clone <this-repo-url>
-cd <repo-folder>
+git clone <your-repo-url>
+cd <repository-folder>
 ```
 
-2. **Run the deployment script:**
-
-#### Option A: Using command-line arguments
+### 2. Run the deployment script
 
 ```bash
 sudo ./deploy-n8n.sh \
-  --github-repo "https://github.com/yourusername/your-n8n-workflows.git" \
-  --github-branch "main" \
-  --dns-zone "yourdomain.com" \
-  --resource-group "your-resource-group" \
-  --vm-ip "your-vm-public-ip" \
-  --hostname "n8n"
+  --hostname n8n.eastus.cloudapp.azure.com \
+  --email your-email@example.com \
+  --timezone Asia/Ho_Chi_Minh \
+  --workflows-repo https://github.com/youruser/n8n-workflows.git
 ```
 
-#### Option B: Using environment variables
+### Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `--hostname` | ✅ | Full hostname (e.g., `n8n.eastus.cloudapp.azure.com`) |
+| `--email` | ✅ | Email for Let's Encrypt certificate |
+| `--timezone` | ❌ | Timezone (default: `UTC`) |
+| `--workflows-repo` | ❌ | GitHub repository URL for workflows |
+
+## Azure DNS Configuration
+
+### For Azure Default Domain (*.cloudapp.azure.com)
+
+Azure automatically creates a DNS entry for your VM. Find your FQDN:
+```bash
+hostname -f
+# or
+curl http://169.254.169.254/metadata/instance/compute/publicFqdn?api-version=2021-02-01&format=text
+```
+
+Use this FQDN as the `--hostname` parameter.
+
+### For Custom Domain with Azure DNS
+
+If using Azure DNS service:
 
 ```bash
-export GITHUB_REPO_URL="https://github.com/yourusername/your-n8n-workflows.git"
-export GITHUB_BRANCH="main"
-export AZURE_DNS_ZONE="yourdomain.com"
-export AZURE_RESOURCE_GROUP="your-resource-group"
-export VM_PUBLIC_IP="your-vm-public-ip"
-export N8N_HOSTNAME="n8n"
+# Create DNS zone (if not exists)
+az network dns zone create \
+  --resource-group <your-resource-group> \
+  --name yourdomain.com
 
-sudo ./deploy-n8n.sh
+# Create A record
+az network dns record-set a create \
+  --resource-group <your-resource-group> \
+  --zone-name yourdomain.com \
+  --name n8n \
+  --ttl 3600
+
+az network dns record-set a add-record \
+  --resource-group <your-resource-group> \
+  --zone-name yourdomain.com \
+  --record-set-name n8n \
+  --ipv4-address <your-vm-public-ip>
 ```
 
-#### Option C: Minimal deployment (without Azure DNS)
-
-```bash
-sudo ./deploy-n8n.sh
-```
-
-Then access n8n via `http://<your-vm-ip>`
+Then use `n8n.yourdomain.com` as the hostname.
 
 ## Directory Structure
+
+After deployment, files are located in `/opt/n8n/`:
 
 ```
 /opt/n8n/
 ├── docker-compose.yml      # Docker Compose configuration
 ├── .env                    # Environment variables
-├── data/                   # n8n data directory
-├── workflows/              # n8n workflows storage
-├── backups/                # Workflow backups
-├── github-workflows/       # Synced GitHub repository
-└── sync-workflows.sh       # Manual sync script
+├── nginx/
+│   ├── nginx.conf          # Main Nginx configuration
+│   └── conf.d/
+│       └── n8n.conf        # n8n virtual host configuration
+├── certbot/
+│   ├── www/                # ACME challenge files
+│   └── conf/               # SSL certificates
+└── workflows/              # n8n workflows (synced from GitHub)
 ```
 
-## GitHub Workflow Integration
+## GitHub Workflows Integration
 
-### Storing Workflows in GitHub
+### Setup
 
-1. Create a GitHub repository for your n8n workflows
-2. Export workflows from n8n as JSON files
-3. Commit and push to your repository
+1. Create a GitHub repository for your workflows
+2. Add workflow JSON files to the repository
+3. Pass the repository URL with `--workflows-repo` parameter
 
-### Workflow Structure
+### Manual Sync
 
-Store your workflow JSON files in the root of your GitHub repository:
-
+```bash
+cd /opt/n8n/workflows
+git pull
+docker restart n8n
 ```
-your-github-repo/
-├── workflow-1.json
-├── workflow-2.json
-├── automation-pipeline.json
+
+### For Qwen Coder Access
+
+Qwen Coder can:
+1. Read existing workflows from the GitHub repository
+2. Create new workflow JSON files
+3. Commit changes to the repository
+4. Changes will be automatically available after git pull
+
+Example workflow structure in GitHub repo:
+```
+n8n-workflows/
+├── webhook-processor.json
+├── daily-report.json
+├── api-integration.json
 └── README.md
 ```
 
-### Automatic Synchronization
+## Access n8n
 
-The deployment script sets up an hourly cron job that:
-- Pulls latest changes from your GitHub repository
-- Copies workflow JSON files to n8n's workflows directory
+After successful deployment:
+- **URL**: `https://your-hostname` (port 443 with HTTPS)
+- **First login**: Create your admin account
 
-Manual sync:
+## SSL Certificate Auto-Renewal
+
+Certificates are automatically renewed via cron job (monthly check).
+
+Manual renewal:
 ```bash
-/opt/n8n/sync-workflows.sh
+cd /opt/n8n
+docker-compose run --rm certbot renew
+docker-compose restart nginx
 ```
 
-### Qwen Coder Access
+## Troubleshooting
 
-To enable Qwen Coder or other AI assistants to create workflows:
+### Certificate Generation Fails
 
-1. Give the AI assistant access to your GitHub repository
-2. The assistant can commit workflow JSON files directly
-3. Changes will be automatically synced to n8n every hour
+1. Verify DNS is properly configured:
+   ```bash
+   nslookup your-hostname
+   ```
 
-Example workflow JSON structure:
-```json
-{
-  "name": "My Automation",
-  "nodes": [...],
-  "connections": {...},
-  "active": true,
-  "settings": {}
-}
-```
+2. Check if port 80 is accessible:
+   ```bash
+   sudo ufw allow 80/tcp
+   sudo ufw allow 443/tcp
+   ```
 
-## Azure DNS Configuration
-
-The script automatically creates DNS records if you provide:
-- `AZURE_DNS_ZONE`: Your DNS zone name (e.g., `example.com`)
-- `AZURE_RESOURCE_GROUP`: Resource group containing the DNS zone
-- `VM_PUBLIC_IP`: Your VM's public IP address
-- `N8N_HOSTNAME`: Subdomain for n8n (e.g., `n8n` → `n8n.example.com`)
-
-### Manual DNS Setup
-
-If you prefer to set up DNS manually:
-
-```bash
-az network dns record-set a add-record \
-  --resource-group "your-resource-group" \
-  --zone-name "yourdomain.com" \
-  --record-set-name "n8n" \
-  --ipv4-address "your-vm-ip"
-```
-
-## Management Commands
+3. In Azure Portal, ensure Network Security Group allows:
+   - Port 80 (HTTP)
+   - Port 443 (HTTPS)
 
 ### View Logs
-```bash
-docker logs n8n
-docker logs -f n8n  # Follow logs
-```
 
-### Start/Stop/Restart
 ```bash
-# Using systemd
-sudo systemctl start n8n
-sudo systemctl stop n8n
-sudo systemctl restart n8n
-
-# Using docker-compose
+# All services
 cd /opt/n8n
-docker-compose up -d
-docker-compose down
+docker-compose logs -f
+
+# Specific service
+docker-compose logs n8n
+docker-compose logs nginx
+docker-compose logs certbot
 ```
 
-### Check Status
+### Restart Services
+
 ```bash
-sudo systemctl status n8n
-docker ps | grep n8n
+cd /opt/n8n
+docker-compose restart
 ```
 
-### Update n8n
+## Security Notes
+
+- HTTPS is enforced (HTTP redirects to HTTPS)
+- Security headers are configured (HSTS, X-Frame-Options, etc.)
+- WebSocket support enabled for real-time features
+- Secure cookies enabled
+
+## Backup
+
+Backup your n8n data:
+```bash
+docker run --rm \
+  -v /opt/n8n/n8n_data:/data \
+  -v $(pwd):/backup \
+  alpine tar czf /backup/n8n-backup-$(date +%Y%m%d).tar.gz -C /data .
+```
+
+## Update n8n
+
 ```bash
 cd /opt/n8n
 docker-compose pull
 docker-compose up -d
 ```
-
-## Security Considerations
-
-### Enable Basic Authentication
-
-Edit `/opt/n8n/docker-compose.yml`:
-
-```yaml
-environment:
-  - N8N_BASIC_AUTH_ACTIVE=true
-  - N8N_BASIC_AUTH_USER=admin
-  - N8N_BASIC_AUTH_PASSWORD=your-secure-password
-```
-
-Then restart:
-```bash
-cd /opt/n8n && docker-compose down && docker-compose up -d
-```
-
-### HTTPS Setup (Recommended)
-
-For production, consider adding nginx with SSL:
-
-1. Install nginx and certbot
-2. Configure reverse proxy to n8n container
-3. Obtain SSL certificate with Let's Encrypt
-
-## Troubleshooting
-
-### n8n won't start
-```bash
-docker logs n8n
-cd /opt/n8n && docker-compose config  # Validate compose file
-```
-
-### Port 80 already in use
-Check what's using port 80:
-```bash
-sudo netstat -tlnp | grep :80
-```
-
-Stop conflicting services or change the port in `docker-compose.yml`.
-
-### GitHub sync fails
-```bash
-cd /opt/n8n/github-workflows
-git status
-git pull
-```
-
-## Backup Strategy
-
-Workflows are automatically stored in:
-- `/opt/n8n/data/` - n8n database and user data
-- `/opt/n8n/workflows/` - Exported workflows
-- `/opt/n8n/backups/` - Manual backups
-
-Create regular backups:
-```bash
-tar -czf n8n-backup-$(date +%Y%m%d).tar.gz /opt/n8n
-```
-
-## License
-
-MIT License
-
-## Support
-
-For issues or questions, please open an issue in this repository.
