@@ -132,9 +132,9 @@ print_info "Copying configuration files..."
 cp "$SCRIPT_DIR/docker-compose.yml" "$DEPLOY_DIR/"
 cp "$SCRIPT_DIR/nginx/nginx.conf" "$DEPLOY_DIR/nginx/"
 
-# Generate nginx config from template
+# Generate nginx config from template (save as .full until SSL is ready)
 print_info "Generating Nginx configuration..."
-sed "s/\${HOSTNAME}/$HOSTNAME/g" "$SCRIPT_DIR/nginx/conf.d/n8n.conf.template" > "$DEPLOY_DIR/nginx/conf.d/n8n.conf"
+sed "s/\${HOSTNAME}/$HOSTNAME/g" "$SCRIPT_DIR/nginx/conf.d/n8n.conf.template" > "$DEPLOY_DIR/nginx/conf.d/n8n.conf.full"
 
 # Create .env file
 print_info "Creating environment file..."
@@ -205,6 +205,7 @@ if [ $? -eq 0 ]; then
     
     # Remove temporary config and use full config
     rm -f "$DEPLOY_DIR/nginx/conf.d/n8n-temp.conf"
+    mv "$DEPLOY_DIR/nginx/conf.d/n8n.conf.full" "$DEPLOY_DIR/nginx/conf.d/n8n.conf"
     
     # Restart nginx with full SSL configuration
     print_info "Restarting services with HTTPS..."
