@@ -103,6 +103,12 @@ docker compose pull openclaw-gateway
 
 # 8. Cấu hình model
 echo -e "${YELLOW}Đang thiết lập Model: $MODEL...${NC}"
+
+# Sửa lỗi phân quyền (Permission fix)
+echo -e "${YELLOW}Đang sửa lỗi phân quyền cho thư mục data...${NC}"
+docker compose run --rm --user root --entrypoint sh openclaw-gateway -c \
+  "chown -R 1000:1000 /home/node/.openclaw && chown -R 1000:1000 /home/node/.openclaw/workspace"
+
 # Chạy onboarding cơ bản (không cài daemon vì dùng docker)
 docker compose run --rm --no-deps --entrypoint node openclaw-gateway \
   dist/index.js onboard --mode local --no-install-daemon
